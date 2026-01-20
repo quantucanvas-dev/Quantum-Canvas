@@ -10,7 +10,7 @@
 
 Quantum Canvas is an interactive web application that generates unique abstract artwork using simulated quantum computing principles. Each piece is created by simulating quantum states, superposition, and wave function collapse to produce truly one-of-a-kind art.
 
-**🔗 [Try it Live](https://your-vercel-url.vercel.app)** *(replace with your actual URL)*
+**🔗 [Try it Live](https://quantum-canvas-v2.vercel.app/)
 
 ---
 
