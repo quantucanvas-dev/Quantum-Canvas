@@ -10,6 +10,9 @@ const QuantumArtGenerator = () => {
   const [ibmToken, setIbmToken] = useState("");
   const [showIbmSetup, setShowIbmSetup] = useState(false);
 
+  // IBM Quantum job tracking
+  const [quantumJob, setQuantumJob] = useState(null);
+
   // Core parameters
   const [qubits, setQubits] = useState(5);
   const [complexity, setComplexity] = useState(50);
@@ -106,6 +109,47 @@ const QuantumArtGenerator = () => {
     escher: { name: "Escher", description: "Impossible geometry" },
   };
 
+  // Poll for quantum job status
+  useEffect(() => {
+    if (
+      !quantumJob ||
+      quantumJob.status === "COMPLETED" ||
+      quantumJob.status === "FAILED"
+    ) {
+      return;
+    }
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusRes = await fetch(
+          `./api/quantum/status?jobId=${quantumJob.jobId}&apiToken=${ibmToken}`
+        );
+        const statusData = await statusRes.json();
+
+        setQuantumJob((prev) => ({
+          ...prev,
+          status: statusData.status,
+          queuePosition: statusData.queuePosition,
+        }));
+
+        if (statusData.status === "COMPLETED") {
+          clearInterval(pollInterval);
+          await fetchQuantumResults(quantumJob.jobId);
+        }
+
+        if (statusData.status === "FAILED") {
+          clearInterval(pollInterval);
+          alert("Quantum job failed. Please try again.");
+          setIsGenerating(false);
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+      }
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
+  }, [quantumJob, ibmToken]);
+
   // Quantum simulation functions
   const quantumRandom = (seed) => {
     let x = Math.sin(seed * 12.9898 + seed * 78.233) * 43758.5453;
@@ -174,7 +218,6 @@ const QuantumArtGenerator = () => {
     ctx.save();
     ctx.translate(x, y);
 
-    // Melting clock-like distortion
     const meltFactor = Math.sin(phase * 2) * 0.5;
     ctx.transform(
       1,
@@ -194,7 +237,6 @@ const QuantumArtGenerator = () => {
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
 
-    // Surreal organic blob
     ctx.beginPath();
     for (let i = 0; i <= 50; i++) {
       const angle = (i / 50) * Math.PI * 2;
@@ -210,7 +252,6 @@ const QuantumArtGenerator = () => {
     ctx.fill();
     ctx.stroke();
 
-    // Add floating elements
     ctx.globalAlpha = 0.6;
     for (let i = 0; i < 3; i++) {
       const ox = Math.cos(phase + i * 2) * size * 0.8;
@@ -230,7 +271,6 @@ const QuantumArtGenerator = () => {
 
     const colors = colorSchemes[colorScheme];
 
-    // Cubist fragmentation
     const fragments = 5 + Math.floor(amplitude * 5);
     for (let i = 0; i < fragments; i++) {
       const angle = (i / fragments) * Math.PI * 2 + phase;
@@ -256,7 +296,6 @@ const QuantumArtGenerator = () => {
       ctx.stroke();
     }
 
-    // Add displaced features
     ctx.globalAlpha = 0.8;
     ctx.fillStyle = colors[3] || color;
     ctx.beginPath();
@@ -272,10 +311,8 @@ const QuantumArtGenerator = () => {
 
     const colors = colorSchemes[colorScheme];
 
-    // Geometric abstraction with circles, triangles, lines
     ctx.globalAlpha = 0.7;
 
-    // Main circle
     const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
     gradient.addColorStop(0, color);
     gradient.addColorStop(1, "transparent");
@@ -284,7 +321,6 @@ const QuantumArtGenerator = () => {
     ctx.arc(0, 0, size * 0.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Intersecting lines
     ctx.strokeStyle = colors[4] || "#ffffff";
     ctx.lineWidth = 3;
     for (let i = 0; i < 4; i++) {
@@ -298,7 +334,6 @@ const QuantumArtGenerator = () => {
       ctx.stroke();
     }
 
-    // Floating geometric shapes
     for (let i = 0; i < 3; i++) {
       const ox = Math.cos(phase * 2 + i * 2.5) * size * 0.5;
       const oy = Math.sin(phase * 2 + i * 2.5) * size * 0.5;
@@ -308,15 +343,12 @@ const QuantumArtGenerator = () => {
       ctx.beginPath();
 
       if (i % 3 === 0) {
-        // Triangle
         ctx.moveTo(ox, oy - shapeSize);
         ctx.lineTo(ox - shapeSize, oy + shapeSize);
         ctx.lineTo(ox + shapeSize, oy + shapeSize);
       } else if (i % 3 === 1) {
-        // Square
         ctx.rect(ox - shapeSize / 2, oy - shapeSize / 2, shapeSize, shapeSize);
       } else {
-        // Circle
         ctx.arc(ox, oy, shapeSize / 2, 0, Math.PI * 2);
       }
       ctx.closePath();
@@ -331,12 +363,10 @@ const QuantumArtGenerator = () => {
 
     const colors = colorSchemes[colorScheme];
 
-    // Action painting - chaotic drips and splatters
     ctx.lineWidth = 1 + amplitude * 4;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // Main drip line
     ctx.strokeStyle = color;
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -353,7 +383,6 @@ const QuantumArtGenerator = () => {
     }
     ctx.stroke();
 
-    // Splatters
     for (let i = 0; i < 8; i++) {
       const sx = x + (quantumRandom(phase + i * 0.3) - 0.5) * size * 2;
       const sy = y + (quantumRandom(phase + i * 0.4 + 50) - 0.5) * size * 2;
@@ -381,11 +410,9 @@ const QuantumArtGenerator = () => {
       "#ffffff",
     ];
 
-    // De Stijl grid
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 4;
 
-    // Create grid divisions
     const divisions = 3 + Math.floor(amplitude * 3);
     const cellSize = size / divisions;
 
@@ -412,7 +439,6 @@ const QuantumArtGenerator = () => {
 
     const colors = colorSchemes[colorScheme];
 
-    // Swirling brushstrokes
     ctx.lineWidth = 3 + amplitude * 4;
     ctx.lineCap = "round";
 
@@ -435,13 +461,11 @@ const QuantumArtGenerator = () => {
       ctx.stroke();
     }
 
-    // Add stars/dots
     ctx.fillStyle = colors[5] || "#ffe66d";
     for (let i = 0; i < 5; i++) {
       const sx = Math.cos(phase + i * 1.5) * size * 0.7;
       const sy = Math.sin(phase * 0.7 + i * 1.5) * size * 0.7;
 
-      // Star burst
       ctx.beginPath();
       for (let j = 0; j < 8; j++) {
         const angle = (j / 8) * Math.PI * 2;
@@ -464,11 +488,9 @@ const QuantumArtGenerator = () => {
 
     const colors = colorSchemes[colorScheme];
 
-    // Impossible geometry / tessellation
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
 
-    // Create interlocking shapes
     const layers = 4;
     for (let l = 0; l < layers; l++) {
       const layerSize = size * (1 - l * 0.2);
@@ -480,7 +502,6 @@ const QuantumArtGenerator = () => {
       ctx.fillStyle =
         colors[(l + Math.floor(phase * 5)) % colors.length] + "80";
 
-      // Hexagonal tessellation
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
         const angle = (i / 6) * Math.PI * 2;
@@ -492,7 +513,6 @@ const QuantumArtGenerator = () => {
       ctx.fill();
       ctx.stroke();
 
-      // Inner impossible triangle
       if (l === 0) {
         ctx.strokeStyle = colors[4] || "#ffffff";
         ctx.lineWidth = 3;
@@ -575,9 +595,61 @@ const QuantumArtGenerator = () => {
     }
   };
 
-  const generateArt = async () => {
-    setIsGenerating(true);
+  // Fetch quantum results when job completes
+  const fetchQuantumResults = async (jobId) => {
+    try {
+      const resultsRes = await fetch(
+        `./api/quantum/results?jobId=${jobId}&apiToken=${ibmToken}`
+      );
+      const resultsData = await resultsRes.json();
 
+      if (!resultsRes.ok) {
+        throw new Error(resultsData.error);
+      }
+
+      // Convert IBM Quantum results to our quantum state format
+      const measurements = resultsData.measurements || [];
+      const quantumStates = convertMeasurementsToStates(measurements);
+
+      // Use the quantum data to generate art
+      generateArtFromQuantumStates(quantumStates);
+    } catch (error) {
+      alert(`Error fetching results: ${error.message}`);
+      setIsGenerating(false);
+    }
+  };
+
+  // Convert measurements to quantum states for rendering
+  const convertMeasurementsToStates = (measurements) => {
+    const states = Math.pow(2, qubits);
+    const amplitudes = [];
+    const counts = {};
+
+    // Count occurrences of each measurement
+    measurements.forEach((bitstring) => {
+      counts[bitstring] = (counts[bitstring] || 0) + 1;
+    });
+
+    // Convert to probability distribution
+    const total = measurements.length;
+    for (let i = 0; i < states; i++) {
+      const bitstring = i.toString(2).padStart(qubits, "0");
+      const count = counts[bitstring] || 0;
+      const prob = count / total;
+      const phase = Math.random() * Math.PI * 2; // Phase info lost in measurement
+
+      amplitudes.push({
+        real: Math.sqrt(prob) * Math.cos(phase),
+        imag: Math.sqrt(prob) * Math.sin(phase),
+        prob,
+        phase,
+      });
+    }
+
+    return amplitudes;
+  };
+
+  const generateArtFromQuantumStates = (quantumStates) => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     const width = canvas.width;
@@ -608,48 +680,13 @@ const QuantumArtGenerator = () => {
     }
     ctx.globalAlpha = 1;
 
-    let quantumStates;
-    const seed = Date.now() * Math.random();
-
-    // Check if using IBM Quantum or Simulation
-    if (quantumMode === "ibm" && ibmToken) {
-      try {
-        // IBM Quantum API call (placeholder - will be implemented when API is ready)
-        // For now, we'll show a message and fall back to simulation with "quantum noise"
-        console.log("IBM Quantum mode - submitting to real hardware...");
-
-        // Simulate quantum states with added "quantum noise" to represent real hardware
-        quantumStates = simulateQuantumState(qubits, seed);
-        quantumStates = applyQuantumGates(quantumStates, "hadamard", entropy);
-
-        // Add realistic quantum noise (decoherence simulation)
-        quantumStates = quantumStates.map((state, i) => ({
-          ...state,
-          prob: state.prob * (0.85 + Math.random() * 0.3), // Noise factor
-          phase: state.phase + (Math.random() - 0.5) * 0.2, // Phase noise
-        }));
-
-        // Normalize after noise
-        const totalProb = quantumStates.reduce((sum, s) => sum + s.prob, 0);
-        quantumStates.forEach((s) => (s.prob /= totalProb));
-      } catch (error) {
-        console.error("IBM Quantum error:", error);
-        // Fall back to simulation
-        quantumStates = simulateQuantumState(qubits, seed);
-        quantumStates = applyQuantumGates(quantumStates, "hadamard", entropy);
-      }
-    } else {
-      // Pure simulation mode
-      quantumStates = simulateQuantumState(qubits, seed);
-      quantumStates = applyQuantumGates(quantumStates, "hadamard", entropy);
-    }
-
     // Render layers
     const renderLayer = () => {
       for (let layer = 0; layer < layerDepth; layer++) {
         ctx.globalAlpha = 0.3 + (layer / layerDepth) * 0.5;
 
         const elementsPerLayer = Math.floor(5 + complexity * 0.2);
+        const seed = Date.now() * Math.random();
 
         for (let i = 0; i < elementsPerLayer; i++) {
           const stateIndex = (i + layer * 10) % quantumStates.length;
@@ -704,6 +741,154 @@ const QuantumArtGenerator = () => {
     ctx.globalAlpha = 1;
 
     // Add signature
+    ctx.font = '12px "Courier New", monospace';
+    ctx.fillStyle = colors[5] || "#ffffff";
+    ctx.globalAlpha = 0.5;
+    const modeLabel = quantumMode === "ibm" ? "IBM-Q" : "SIM";
+    ctx.fillText(
+      `Q${qubits} | ${artisticStyle.toUpperCase()} | ${modeLabel} | ${
+        new Date().toISOString().split("T")[0]
+      }`,
+      10,
+      height - 10
+    );
+    ctx.globalAlpha = 1;
+
+    setIsGenerating(false);
+    setArtworkGenerated(true);
+  };
+
+  const generateArt = async () => {
+    setIsGenerating(true);
+
+    // Check if using IBM Quantum
+    if (quantumMode === "ibm" && ibmToken) {
+      try {
+        // Submit job to IBM Quantum
+        const submitRes = await fetch("./api/quantum/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            qubits,
+            style: "entangled",
+            apiToken: ibmToken,
+          }),
+        });
+
+        const submitData = await submitRes.json();
+
+        if (!submitRes.ok) {
+          throw new Error(submitData.error);
+        }
+
+        setQuantumJob({
+          jobId: submitData.jobId,
+          status: "QUEUED",
+          backend: submitData.backend,
+        });
+
+        // Don't set isGenerating to false - polling will handle it
+        return;
+      } catch (error) {
+        console.error("IBM Quantum error:", error);
+        alert(
+          `IBM Quantum Error: ${error.message}. Falling back to simulation.`
+        );
+        // Fall through to simulation
+      }
+    }
+
+    // Simulation mode (or fallback)
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const colors = colorSchemes[colorScheme];
+    const bgGradient = ctx.createRadialGradient(
+      width / 2,
+      height / 2,
+      0,
+      width / 2,
+      height / 2,
+      width * 0.7
+    );
+    bgGradient.addColorStop(0, colors[1] || colors[0]);
+    bgGradient.addColorStop(1, colors[0]);
+    ctx.fillStyle = bgGradient;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.globalAlpha = 0.03;
+    for (let i = 0; i < 5000; i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      ctx.fillStyle = Math.random() > 0.5 ? "#ffffff" : "#000000";
+      ctx.fillRect(x, y, 1, 1);
+    }
+    ctx.globalAlpha = 1;
+
+    let quantumStates;
+    const seed = Date.now() * Math.random();
+
+    quantumStates = simulateQuantumState(qubits, seed);
+    quantumStates = applyQuantumGates(quantumStates, "hadamard", entropy);
+
+    const renderLayer = () => {
+      for (let layer = 0; layer < layerDepth; layer++) {
+        ctx.globalAlpha = 0.3 + (layer / layerDepth) * 0.5;
+
+        const elementsPerLayer = Math.floor(5 + complexity * 0.2);
+
+        for (let i = 0; i < elementsPerLayer; i++) {
+          const stateIndex = (i + layer * 10) % quantumStates.length;
+          const state = quantumStates[stateIndex];
+
+          const x =
+            width * 0.1 + quantumRandom(seed + i * 0.1 + layer) * width * 0.8;
+          const y =
+            height * 0.1 +
+            quantumRandom(seed + i * 0.2 + layer + 100) * height * 0.8;
+          const size = 30 + state.prob * complexity * 3 + layer * 10;
+          const color = colors[2 + (i % (colors.length - 2))];
+
+          renderByStyle(
+            ctx,
+            artisticStyle,
+            x,
+            y,
+            size,
+            color,
+            state.phase,
+            state.prob
+          );
+        }
+      }
+    };
+
+    if (symmetry !== "none") {
+      applySymmetry(ctx, width, height, renderLayer);
+    } else {
+      renderLayer();
+    }
+
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = 0.1;
+    const glowGradient = ctx.createRadialGradient(
+      width / 2,
+      height / 2,
+      0,
+      width / 2,
+      height / 2,
+      width * 0.5
+    );
+    glowGradient.addColorStop(0, colors[3] || colors[2]);
+    glowGradient.addColorStop(1, "transparent");
+    ctx.fillStyle = glowGradient;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 1;
+
     ctx.font = '12px "Courier New", monospace';
     ctx.fillStyle = colors[5] || "#ffffff";
     ctx.globalAlpha = 0.5;
@@ -793,7 +978,7 @@ const QuantumArtGenerator = () => {
             />
             <span className="text-xs uppercase tracking-widest text-cyan-400">
               {quantumMode === "ibm"
-                ? "IBM Quantum Connected"
+                ? "IBM Quantum Mode"
                 : "Quantum Simulation Active"}
             </span>
           </div>
@@ -803,8 +988,7 @@ const QuantumArtGenerator = () => {
           </h1>
           <p className="text-gray-500 text-lg max-w-2xl mx-auto">
             Transform quantum probability distributions into stunning visual
-            art. Each creation is uniquely generated from simulated quantum
-            states.
+            art. Each creation is uniquely generated from quantum states.
           </p>
         </header>
 
@@ -844,9 +1028,6 @@ const QuantumArtGenerator = () => {
               <div className="text-left">
                 <div className="font-bold text-sm flex items-center gap-2">
                   IBM Quantum
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                    BETA
-                  </span>
                 </div>
                 <div className="text-xs text-gray-500">
                   Real Hardware • Queue Time
@@ -868,53 +1049,110 @@ const QuantumArtGenerator = () => {
                 <div className="flex-1">
                   <h3 className="font-bold mb-1 flex items-center gap-2">
                     IBM Quantum Integration
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-500/30 text-gray-400 border border-gray-500/30">
-                      COMING SOON
-                    </span>
                   </h3>
                   <p className="text-xs text-gray-400 mb-4">
-                    We're working on connecting to real IBM Quantum hardware.
-                    Soon you'll be able to run your quantum art on actual
-                    quantum computers! For now, use Simulation Mode which
-                    produces mathematically identical results.
+                    Connect to real IBM Quantum hardware. Get your free API
+                    token at quantum.ibm.com
                   </p>
 
-                  <div className="relative opacity-50">
+                  <div className="relative">
                     <input
                       type="password"
-                      disabled
-                      placeholder="IBM Quantum API token (coming soon)..."
-                      className="w-full bg-black/40 border border-gray-600/30 rounded-xl py-3 px-4 text-sm placeholder-gray-600 cursor-not-allowed"
+                      value={ibmToken}
+                      onChange={(e) => setIbmToken(e.target.value)}
+                      placeholder="Enter your IBM Quantum API token..."
+                      className="w-full bg-black/40 border border-gray-600/50 rounded-xl py-3 px-4 text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500/50"
                     />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                      🔒
-                    </div>
+                    {ibmToken && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-sm">
+                        ✓
+                      </div>
+                    )}
                   </div>
+
+                  <small className="text-xs text-gray-500 mt-2 block">
+                    Get your free token at{" "}
+                    <a
+                      href="https://quantum.ibm.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-amber-400 hover:underline"
+                    >
+                      quantum.ibm.com
+                    </a>
+                  </small>
                 </div>
               </div>
 
+              {/* IBM Quantum Job Status */}
+              {quantumJob && (
+                <div className="mt-4 bg-black/20 rounded-lg p-4">
+                  <h4 className="font-bold text-sm mb-2">Quantum Job Status</h4>
+                  <div className="space-y-1 text-xs text-gray-400">
+                    <p>
+                      Job ID:{" "}
+                      <span className="text-gray-300 font-mono">
+                        {quantumJob.jobId}
+                      </span>
+                    </p>
+                    <p>
+                      Backend:{" "}
+                      <span className="text-gray-300">
+                        {quantumJob.backend}
+                      </span>
+                    </p>
+                    <p>
+                      Status:{" "}
+                      <span
+                        className={
+                          quantumJob.status === "COMPLETED"
+                            ? "text-green-400"
+                            : quantumJob.status === "RUNNING"
+                            ? "text-blue-400"
+                            : quantumJob.status === "FAILED"
+                            ? "text-red-400"
+                            : "text-yellow-400"
+                        }
+                      >
+                        {quantumJob.status}
+                      </span>
+                    </p>
+                    {quantumJob.queuePosition && (
+                      <p>
+                        Queue Position:{" "}
+                        <span className="text-gray-300">
+                          {quantumJob.queuePosition}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  {quantumJob.status === "QUEUED" && (
+                    <p className="text-xs text-yellow-400 mt-2">
+                      ⏱️ Typical wait: 5-30 minutes
+                    </p>
+                  )}
+                  {quantumJob.status === "RUNNING" && (
+                    <p className="text-xs text-blue-400 mt-2">
+                      ⚡ Running on quantum computer...
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* IBM Quantum Info */}
-              <div className="grid grid-cols-3 gap-3 mt-4 opacity-60">
+              <div className="grid grid-cols-3 gap-3 mt-4">
                 <div className="bg-black/20 rounded-lg p-3 text-center">
                   <div className="text-lg font-bold text-gray-400">127</div>
                   <div className="text-xs text-gray-500">Qubits Available</div>
                 </div>
                 <div className="bg-black/20 rounded-lg p-3 text-center">
-                  <div className="text-lg font-bold text-gray-400">~2-5m</div>
+                  <div className="text-lg font-bold text-gray-400">5-30m</div>
                   <div className="text-xs text-gray-500">Queue Time</div>
                 </div>
                 <div className="bg-black/20 rounded-lg p-3 text-center">
                   <div className="text-lg font-bold text-gray-400">Real</div>
                   <div className="text-xs text-gray-500">Quantum Noise</div>
                 </div>
-              </div>
-
-              {/* Coming Soon Notice */}
-              <div className="mt-4 flex items-center gap-2 text-xs text-amber-400/70 bg-amber-500/10 rounded-lg p-3">
-                <span>🚀</span>
-                <span>
-                  IBM Quantum integration coming soon!
-                </span>
               </div>
             </div>
           )}
@@ -986,17 +1224,19 @@ const QuantumArtGenerator = () => {
             <div className="flex gap-4 mt-6">
               <button
                 onClick={generateArt}
-                disabled={isGenerating || quantumMode === "ibm"}
+                disabled={isGenerating || (quantumMode === "ibm" && !ibmToken)}
                 className={`flex-1 py-4 px-6 rounded-xl font-bold uppercase tracking-wider transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
-                  quantumMode === "ibm"
-                    ? "bg-gray-700 cursor-not-allowed"
+                  quantumMode === "ibm" && ibmToken
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400"
                     : "bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 shadow-cyan-500/25 hover:shadow-cyan-500/40"
                 }`}
               >
                 {isGenerating
                   ? "Generating..."
+                  : quantumMode === "ibm" && !ibmToken
+                  ? "🔒 Enter API Token"
                   : quantumMode === "ibm"
-                  ? "🔒 IBM Quantum Coming Soon"
+                  ? "⚛️ Run on IBM Quantum"
                   : "◈ Generate Art"}
               </button>
 
@@ -1152,8 +1392,11 @@ const QuantumArtGenerator = () => {
                 <div>
                   <h4 className="font-bold text-sm mb-1">How it works</h4>
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    Quantum states are simulated using superposition principles.
-                    Each measurement collapses the wave function, creating
+                    Quantum states are{" "}
+                    {quantumMode === "ibm"
+                      ? "measured on real IBM quantum hardware"
+                      : "simulated using superposition principles"}
+                    . Each measurement collapses the wave function, creating
                     unique probability distributions that drive the artistic
                     generation.
                   </p>
